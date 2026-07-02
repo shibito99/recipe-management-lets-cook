@@ -78,7 +78,7 @@ module Api
         {
           id:      item.id,
           name:    item.name,
-          amount:  item.amount,
+          amount:  item.amount&.to_f,
           unit:    item.unit,
           checked: item.checked
         }
