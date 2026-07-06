@@ -9,10 +9,10 @@ terraform {
   }
 
   backend "s3" {
-    bucket         = "recipe-app-tfstate"
+    bucket         = "recipe-app-tfstate-237228997080"
     key            = "prod/terraform.tfstate"
     region         = "ap-northeast-1"
-    dynamodb_table = "recipe-app-tfstate-lock"
+    use_lockfile   = true
     encrypt        = true
   }
 }
