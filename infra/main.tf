@@ -68,6 +68,7 @@ module "cloudfront" {
   frontend_bucket_domain  = module.s3.frontend_bucket_domain
   images_bucket_domain    = module.s3.images_bucket_domain
   ec2_elastic_ip          = module.ec2.elastic_ip
+  ec2_elastic_ip_dns      = module.ec2.elastic_ip_dns
   cloudfront_custom_token = var.cloudfront_custom_token
   acm_certificate_arn     = var.acm_certificate_arn
   domain_name             = var.domain_name
