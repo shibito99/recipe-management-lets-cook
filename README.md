@@ -1,7 +1,9 @@
-# 🍳 Recipe management app "Let's cook!"
+# 🍳 料理レシピ管理アプリ "Let's Cook!"
 
-お気に入りのレシピを記録・管理できる料理レシピ管理Webアプリです。
-材料・手順・栄養情報をまとめて管理し、買い物リスト機能で食材の準備もスムーズに行えます。
+お気に入りのレシピを記録・管理できる料理レシピ管理Webアプリです。  
+材料・手順・画像をまとめて管理し、買い物リスト機能で食材の準備もスムーズに行えます。
+
+**デモURL:** https://d2b2m401smddic.cloudfront.net
 
 ---
 
@@ -15,7 +17,7 @@
 <!-- TODO: スクリーンショットを追加 -->
 > 📷 スクリーンショットを追加予定
 
-### レシピ登録フォーム
+### 買い物リスト
 <!-- TODO: スクリーンショットを追加 -->
 > 📷 スクリーンショットを追加予定
 
@@ -31,25 +33,22 @@
 | **レシピ登録** | タイトル・説明・材料・手順・タグを登録 |
 | **レシピ編集** | 既存レシピの内容を編集・更新 |
 | **レシピ削除** | 不要なレシピを削除 |
+| **画像アップロード** | レシピに料理写真を添付（S3 Presigned URL経由） |
 
 ### 検索・絞り込み
 | 機能 | 説明 |
 |------|------|
 | **ジャンル絞り込み** | 和食・洋食・中華・エスニック・その他で絞り込み |
-| **キーワード検索** | タイトル・説明文からキーワード検索 |
-| **調理時間フィルタ** | 最大調理時間で絞り込み |
-| **材料名検索** | 使いたい食材からレシピを検索 |
-| **タグ絞り込み** | 「簡単」「お弁当」などのタグで絞り込み |
-| **ソート** | 新着順・調理時間順・タイトル順 |
+| **キーワード検索** | タイトル・食材・タグからキーワード検索 |
+| **調理時間フィルター** | 15分以内 / 30分以内 / 60分以内 / 60分超で絞り込み |
 
 ### 買い物リスト
 | 機能 | 説明 |
 |------|------|
-| **リスト作成** | 買い物リストを複数作成・管理 |
-| **材料一括追加** | レシピから必要な食材を一括で買い物リストに追加 |
-| **人数スケーリング** | 作る人数に合わせて材料の分量を自動調整 |
-| **チェック機能** | 購入済み食材をチェックして管理 |
-| **チェック済み一括削除** | 購入済みアイテムをまとめて削除 |
+| **リスト作成・削除** | 買い物リストを複数作成・管理 |
+| **食材追加** | リストに食材を個別追加 |
+| **チェック機能** | 購入済み食材をチェックして管理（進捗バー表示） |
+| **食材削除** | リストから不要な食材を削除 |
 
 ---
 
@@ -58,7 +57,7 @@
 ### フロントエンド
 | 技術 | バージョン | 用途 |
 |------|-----------|------|
-| Next.js | 16.2.7 | フロントエンドフレームワーク |
+| Next.js | 16.2.7 | フロントエンドフレームワーク（App Router・静的エクスポート） |
 | React | 19.2.4 | UIライブラリ |
 | TypeScript | ^5 | 型安全な開発 |
 | Tailwind CSS | ^4 | スタイリング |
@@ -66,34 +65,38 @@
 ### バックエンド
 | 技術 | バージョン | 用途 |
 |------|-----------|------|
-| Ruby on Rails | 7.2 | APIサーバー（APIモード） |
-| Ruby | 3.3.0 | プログラミング言語 |
-| MySQL | 8.0 | データベース |
-| Puma | - | アプリケーションサーバー |
+| AWS Lambda | - | サーバレスAPIハンドラー |
+| Ruby | 3.2 | Lambdaランタイム |
+| AWS API Gateway | HTTP API v2 | APIエンドポイント管理 |
+
+### データストア・ストレージ
+| 技術 | 用途 |
+|------|------|
+| Amazon DynamoDB | レシピ・買い物リストの永続化（PAY_PER_REQUEST） |
+| Amazon S3 | レシピ画像の保存 |
 
 ### インフラ
 | 技術 | 用途 |
 |------|------|
-| AWS EC2 | アプリケーションサーバー・DBサーバー |
-| AWS S3 | フロントエンド配信・画像保存 |
-| AWS CloudFront | CDN・HTTPS配信 |
-| Nginx | リバースプロキシ |
+| Amazon CloudFront | CDN・HTTPS配信・オリジン振り分け |
+| Amazon S3 | フロントエンド静的ファイルの配信 |
 | Terraform | インフラのコード管理（IaC） |
-| Docker / Docker Compose | ローカル開発環境 |
 
 ---
 
 ## ☁️ インフラ構成
 
 ```
-Internet
+ユーザー
   │ HTTPS
   ▼
-CloudFront ─────────────── S3（フロントエンド静的ファイル）
-  │ /api/*                 S3（画像ストレージ）
-  ▼
-EC2（Nginx + Rails + MySQL）
-  t3.micro / Amazon Linux 2023
+Amazon CloudFront (d2b2m401smddic.cloudfront.net)
+  ├── /*        → S3（Next.js 静的ファイル）
+  ├── /api/*    → API Gateway → Lambda (Ruby 3.2)
+  │                                  │
+  │                                  ├── DynamoDB（レシピ・買い物リスト）
+  │                                  └── S3（画像 Presigned URL発行）
+  └── /images/* → S3（レシピ画像）
 ```
 
 ---
@@ -102,42 +105,81 @@ EC2（Nginx + Rails + MySQL）
 
 ```
 .
-├── backend/              # Ruby on Rails（APIモード）
+├── backend/
+│   └── lambda/
+│       └── handler.rb          # Lambda ハンドラー（Ruby 3.2）
+├── frontend/                   # Next.js（App Router・静的エクスポート）
 │   ├── app/
-│   │   ├── controllers/api/v1/   # APIエンドポイント
-│   │   └── models/               # ActiveRecordモデル
-│   ├── db/
-│   │   ├── migrate/              # マイグレーションファイル
-│   │   └── seeds.rb              # サンプルデータ
-│   └── spec/                     # RSpecテスト
-├── frontend/             # Next.js（App Router）
-│   ├── app/
-│   │   ├── components/           # 共通コンポーネント
+│   │   ├── components/
+│   │   │   ├── Header.tsx      # ナビゲーション付きヘッダー
+│   │   │   ├── RecipeCard.tsx  # レシピカード
+│   │   │   ├── RecipeForm.tsx  # レシピ登録・編集フォーム（画像アップロード含む）
+│   │   │   └── GenreFilter.tsx # ジャンルフィルター
 │   │   ├── recipes/
-│   │   │   ├── [id]/             # レシピ詳細ページ
-│   │   │   ├── [id]/edit/        # レシピ編集ページ
-│   │   │   └── new/              # レシピ登録ページ
-│   │   └── page.tsx              # レシピ一覧（トップ）
+│   │   │   ├── page.tsx        # レシピ詳細・編集ページ（?id=xxx）
+│   │   │   └── new/page.tsx    # レシピ新規登録ページ
+│   │   ├── shopping/
+│   │   │   └── page.tsx        # 買い物リストページ
+│   │   ├── data/recipes.ts     # ジャンル定数
+│   │   └── page.tsx            # レシピ一覧（トップページ）
 │   └── lib/
-│       └── api.ts                # APIクライアント（型定義付き）
-├── infra/                # Terraform（IaC）
+│       └── api.ts              # APIクライアント（型定義付き）
+├── infra/                      # Terraform（IaC）
 │   └── modules/
-│       ├── vpc/          # VPC・サブネット・IGW
-│       ├── security_group/ # ファイアウォール設定
-│       ├── ec2/          # EC2・IAMロール・EIP
-│       ├── s3/           # フロントエンド・画像バケット
-│       └── cloudfront/   # CDN・OAC・SPAルーティング
-├── docs/                 # 設計書一式
-└── docker-compose.yml    # ローカル開発環境
+│       ├── api_gateway/        # API Gateway (HTTP API v2)
+│       ├── lambda/             # Lambda 関数・IAMロール
+│       ├── dynamodb/           # DynamoDB テーブル
+│       ├── s3/                 # フロントエンド・画像バケット
+│       └── cloudfront/         # CDN・OAC・SPAルーティング
+└── docs/                       # 設計書一式
+    └── architecture.drawio     # AWS構成図
 ```
+
+---
+
+## 📡 APIエンドポイント
+
+Lambda ハンドラー（`backend/lambda/handler.rb`）が処理するエンドポイント一覧です。
+
+### レシピ
+
+| メソッド | エンドポイント | 説明 |
+|---------|--------------|------|
+| GET | `/api/v1/recipes` | レシピ一覧（`q` / `genre` / `tag` / `cooking_time` でフィルタ可） |
+| GET | `/api/v1/recipes/:id` | レシピ詳細 |
+| POST | `/api/v1/recipes` | レシピ作成 |
+| PUT | `/api/v1/recipes/:id` | レシピ更新 |
+| DELETE | `/api/v1/recipes/:id` | レシピ削除 |
+
+### 画像アップロード
+
+| メソッド | エンドポイント | 説明 |
+|---------|--------------|------|
+| POST | `/api/v1/upload` | S3 Presigned URL 発行（ブラウザから直接アップロード） |
+
+### 買い物リスト
+
+| メソッド | エンドポイント | 説明 |
+|---------|--------------|------|
+| GET | `/api/v1/shopping-lists` | 買い物リスト一覧 |
+| POST | `/api/v1/shopping-lists` | 買い物リスト作成 |
+| PUT | `/api/v1/shopping-lists/:id` | 買い物リスト更新（アイテムのチェック・追加・削除） |
+| DELETE | `/api/v1/shopping-lists/:id` | 買い物リスト削除 |
+
+### ヘルスチェック
+
+| メソッド | エンドポイント | 説明 |
+|---------|--------------|------|
+| GET | `/health` | Lambda 死活確認 |
 
 ---
 
 ## 🚀 ローカル開発環境のセットアップ
 
 ### 前提条件
-- Docker Desktop がインストール済みであること
-- Node.js 20以上 がインストール済みであること
+
+- Node.js 20以上
+- AWS CLI（設定済み）
 
 ### 1. リポジトリをクローン
 
@@ -146,61 +188,69 @@ git clone https://github.com/shibito99/recipe-management-lets-cook.git
 cd recipe-management-lets-cook
 ```
 
-### 2. バックエンドを起動
-
-```bash
-# Dockerコンテナを起動（Rails + MySQL）
-docker compose up
-
-# 別ターミナルでマイグレーション・シードデータ投入
-docker compose exec backend rails db:migrate
-docker compose exec backend rails db:seed
-```
-
-### 3. フロントエンドを起動
+### 2. フロントエンドを起動
 
 ```bash
 cd frontend
 npm install
+
+# API URLを設定（ローカル開発時はAPI Gatewayのエンドポイントを直接指定）
+echo "NEXT_PUBLIC_API_URL=https://u2wo63rb4m.execute-api.ap-northeast-1.amazonaws.com" > .env.local
+echo "NEXT_PUBLIC_CDN_URL=https://d2b2m401smddic.cloudfront.net" >> .env.local
+
 npm run dev
 ```
 
-### 4. アクセス
+### 3. アクセス
 
 | サービス | URL |
 |---------|-----|
-| フロントエンド | http://localhost:3000 |
-| バックエンドAPI | http://localhost:3001/api/v1 |
+| フロントエンド（ローカル） | http://localhost:3000 |
+| バックエンドAPI（AWS） | https://u2wo63rb4m.execute-api.ap-northeast-1.amazonaws.com |
 
 ---
 
-## 🧪 テスト
+## 🏗 インフラのデプロイ手順
+
+### 前提条件
+
+- Terraform >= 1.7
+- AWS CLI（適切な権限を持つプロファイル設定済み）
+
+### 1. Terraform の初期化・適用
 
 ```bash
-# バックエンド（RSpec）
-docker compose run --rm -e RAILS_ENV=test backend bundle exec rspec
-
-# フロントエンド 型チェック
-cd frontend && npx tsc --noEmit
+cd infra
+terraform init
+terraform apply
 ```
 
----
+### 2. Lambda の更新
 
-## 📡 主なAPIエンドポイント
+```bash
+# Lambda zip を作成
+Compress-Archive -Path backend/lambda/* -DestinationPath infra/modules/lambda/lambda.zip -Force
 
-| メソッド | エンドポイント | 説明 |
-|---------|--------------|------|
-| GET | `/api/v1/recipes` | レシピ一覧（フィルタ・ソート・ページネーション） |
-| GET | `/api/v1/recipes/:id` | レシピ詳細 |
-| POST | `/api/v1/recipes` | レシピ作成 |
-| PATCH | `/api/v1/recipes/:id` | レシピ更新 |
-| DELETE | `/api/v1/recipes/:id` | レシピ削除 |
-| GET | `/api/v1/tags` | タグ一覧 |
-| GET | `/api/v1/shopping_lists` | 買い物リスト一覧 |
-| POST | `/api/v1/shopping_lists/:id/items` | アイテム追加（個別 or レシピから一括） |
-| DELETE | `/api/v1/shopping_lists/:id/items/checked` | チェック済み一括削除 |
+# Lambda コードを更新
+aws lambda update-function-code \
+  --function-name recipe-app-api \
+  --zip-file fileb://infra/modules/lambda/lambda.zip
+```
 
-詳細は [docs/API設計書.md](docs/API設計書.md) を参照してください。
+### 3. フロントエンドのビルド・デプロイ
+
+```bash
+cd frontend
+npm run build
+
+# S3 にアップロード
+aws s3 sync out s3://<frontend-bucket-name> --delete
+
+# CloudFront キャッシュを無効化
+aws cloudfront create-invalidation \
+  --distribution-id <distribution-id> \
+  --paths "/*"
+```
 
 ---
 
@@ -208,7 +258,8 @@ cd frontend && npx tsc --noEmit
 
 | ファイル | 内容 |
 |---------|------|
-| [docs/要件定義書.md](docs/要件定義書.md) | ソフトウェア要件定義書（SRS） |
+| [docs/architecture.drawio](docs/architecture.drawio) | AWS構成図（Draw.ioで閲覧可） |
+| [docs/要件定義書.md](docs/要件定義書.md) | ソフトウェア要件定義書 |
 | [docs/技術スタック選定書.md](docs/技術スタック選定書.md) | 技術スタック選定書 |
 | [docs/アーキテクチャ設計書.md](docs/アーキテクチャ設計書.md) | システムアーキテクチャ設計書 |
 | [docs/データベース設計書.md](docs/データベース設計書.md) | データベース設計書 |
@@ -216,7 +267,6 @@ cd frontend && npx tsc --noEmit
 | [docs/画面設計書.md](docs/画面設計書.md) | 画面設計書 |
 | [docs/インフラ設計書.md](docs/インフラ設計書.md) | インフラ設計書（Terraform） |
 | [docs/デプロイ手順書.md](docs/デプロイ手順書.md) | デプロイ手順書 |
-| [docs/テスト計画書.md](docs/テスト計画書.md) | テスト計画書 |
 
 ---
 
